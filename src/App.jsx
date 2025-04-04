@@ -1,8 +1,8 @@
 // App.jsx
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import WebcamEmotionDetector from './components/WebcamEmotionDetector.jsx';
-import MoodMusicChartbot from './components/MoodMusicChatbot.jsx';
+import WebcamEmotionDetector from './Components/WebcamEmotionDetector.jsx';
+import MoodMusicChartbot from './Components/MoodMusicChatbot.jsx';
 function App() {
   const [detectedEmotion, setDetectedEmotion] = useState(null);
 
