@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Waves } from "lucide-react"
@@ -6,114 +8,224 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 // Initialize Google Generative AI
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_GEN_AI_KEY)
 
-// Emotion mappings with more detailed genres and prompts
+// Enhanced emotion mappings with more nuanced music suggestions
 const emotionConfig = {
   Happy: {
-    genres: ["upbeat pop", "dance", "happy indie", "summer hits", "feel-good"],
-    initialPrompt: "I detected that you might be feeling happy. Is that right?",
-    musicPrompt: "Would you like some uplifting music to match your happy mood?",
-    synonyms: ["joyful", "excited", "cheerful", "elated", "content"],
+    genres: ["upbeat pop", "dance", "happy indie", "summer hits", "feel-good", "celebration", "energetic"],
+    musicPrompt: "I can sense your positive energy! Let me find some uplifting music to amplify your happiness.",
+    synonyms: ["joyful", "excited", "cheerful", "elated", "content", "euphoric", "delighted", "thrilled"],
+    intensity: {
+      low: ["chill pop", "acoustic happy", "light indie"],
+      medium: ["upbeat pop", "feel-good hits", "positive vibes"],
+      high: ["dance", "party", "celebration", "high energy"],
+    },
   },
   Sad: {
-    genres: ["sad songs", "ballads", "melancholy", "emotional", "heartbreak"],
-    initialPrompt: "I noticed you might be feeling a bit down. Would you say that's accurate?",
-    musicPrompt: "Would you like some comforting music that resonates with how you're feeling?",
-    synonyms: ["depressed", "gloomy", "heartbroken", "tearful", "blue"],
+    genres: ["melancholy", "emotional ballads", "indie sad", "healing music", "contemplative", "soft acoustic"],
+    musicPrompt:
+      "I understand you're going through a tough time. Music can be healing - let me find something that resonates with your feelings.",
+    synonyms: ["depressed", "gloomy", "heartbroken", "tearful", "blue", "melancholic", "sorrowful", "down"],
+    intensity: {
+      low: ["soft acoustic", "gentle ballads", "healing music"],
+      medium: ["melancholy indie", "emotional", "contemplative"],
+      high: ["deep sadness", "heartbreak", "cathartic"],
+    },
   },
   Angry: {
-    genres: ["rock", "metal", "aggressive", "punk", "hardcore"],
-    initialPrompt: "You appear to be upset or frustrated. Is that how you're feeling?",
-    musicPrompt: "Would some energetic music help release some tension?",
-    synonyms: ["furious", "irritated", "enraged", "mad", "annoyed"],
+    genres: ["rock", "alternative rock", "punk", "metal", "aggressive", "intense", "powerful"],
+    musicPrompt: "I can feel your frustration. Sometimes powerful music helps channel those intense emotions.",
+    synonyms: ["furious", "irritated", "enraged", "mad", "annoyed", "frustrated", "livid", "outraged"],
+    intensity: {
+      low: ["alternative rock", "indie rock", "edgy pop"],
+      medium: ["rock", "punk", "aggressive"],
+      high: ["metal", "hardcore", "intense"],
+    },
   },
-  Disgust: {
-    genres: ["punk", "alternative", "indie", "experimental", "darkwave"],
-    initialPrompt: "I'm sensing some displeasure in your expression. Does that sound right?",
-    musicPrompt: "Would you like some alternative music to shift your perspective?",
-    synonyms: ["repulsed", "displeased", "revolted", "sickened", "nauseated"],
+  Anxious: {
+    genres: ["ambient", "calming", "meditation", "peaceful", "relaxing", "soothing", "nature sounds"],
+    musicPrompt: "I notice you seem anxious. Let me find some calming music to help ease your mind.",
+    synonyms: ["worried", "nervous", "stressed", "tense", "uneasy", "restless", "overwhelmed", "panicked"],
+    intensity: {
+      low: ["soft ambient", "gentle instrumental", "peaceful"],
+      medium: ["meditation", "calming", "relaxing"],
+      high: ["deep relaxation", "anxiety relief", "therapeutic"],
+    },
   },
-  Fear: {
-    genres: ["ambient", "atmospheric", "soundscapes", "calm", "meditative"],
-    initialPrompt: "You seem a bit anxious or worried. Is that how you're feeling?",
-    musicPrompt: "Would some calming music help you relax?",
-    synonyms: ["scared", "anxious", "nervous", "terrified", "worried"],
+  Excited: {
+    genres: ["energetic", "electronic", "upbeat", "dance-pop", "motivational", "pump-up"],
+    musicPrompt: "Your excitement is contagious! Let me find some high-energy tracks to match your vibe.",
+    synonyms: ["thrilled", "pumped", "energized", "hyped", "enthusiastic", "exhilarated", "animated"],
+    intensity: {
+      low: ["upbeat pop", "energetic indie", "positive"],
+      medium: ["dance-pop", "electronic", "motivational"],
+      high: ["high energy", "pump-up", "intense electronic"],
+    },
   },
-  Surprise: {
-    genres: ["upbeat", "energetic", "electronic", "happy electronic", "dance-pop"],
-    initialPrompt: "You look surprised! Is that accurate?",
-    musicPrompt: "How about some exciting tracks to match that energy?",
-    synonyms: ["astonished", "amazed", "shocked", "startled", "stunned"],
+  Romantic: {
+    genres: ["romantic", "love songs", "smooth", "sensual", "intimate", "soft rock"],
+    musicPrompt: "I sense romance in the air! Let me find some beautiful love songs for you.",
+    synonyms: ["loving", "affectionate", "passionate", "tender", "intimate", "sentimental"],
+    intensity: {
+      low: ["soft romantic", "gentle love songs", "tender"],
+      medium: ["romantic hits", "love ballads", "smooth"],
+      high: ["passionate", "intense love", "sensual"],
+    },
+  },
+  Nostalgic: {
+    genres: ["nostalgic", "retro", "classic hits", "throwback", "vintage", "memories"],
+    musicPrompt: "I can tell you're feeling nostalgic. Let me find some music that captures those precious memories.",
+    synonyms: ["reminiscent", "wistful", "sentimental", "longing", "reflective"],
+    intensity: {
+      low: ["soft nostalgic", "gentle memories", "reflective"],
+      medium: ["classic hits", "retro", "throwback"],
+      high: ["deep nostalgia", "emotional memories", "vintage"],
+    },
+  },
+  Motivated: {
+    genres: ["motivational", "workout", "pump-up", "inspiring", "powerful", "energizing"],
+    musicPrompt: "I can feel your determination! Let me find some motivational tracks to fuel your drive.",
+    synonyms: ["determined", "driven", "focused", "ambitious", "inspired", "pumped up"],
+    intensity: {
+      low: ["inspiring", "uplifting", "positive motivation"],
+      medium: ["motivational", "energizing", "pump-up"],
+      high: ["intense motivation", "workout", "powerful"],
+    },
+  },
+  Peaceful: {
+    genres: ["peaceful", "serene", "tranquil", "zen", "nature", "meditation"],
+    musicPrompt: "You seem to be in a peaceful state. Let me find some serene music to complement your tranquility.",
+    synonyms: ["calm", "serene", "tranquil", "zen", "relaxed", "centered"],
+    intensity: {
+      low: ["gentle peaceful", "soft tranquil", "light ambient"],
+      medium: ["peaceful", "serene", "zen"],
+      high: ["deep meditation", "profound peace", "spiritual"],
+    },
   },
   Neutral: {
-    genres: ["chill", "lo-fi", "easy listening", "background", "ambient pop"],
-    initialPrompt: "Your expression seems quite balanced. Would you say you're feeling neutral right now?",
-    musicPrompt: "Would you like some pleasant background music to accompany your balanced mood?",
-    synonyms: ["calm", "balanced", "indifferent", "unaffected", "composed"],
+    genres: ["chill", "lo-fi", "easy listening", "background", "ambient pop", "indie chill"],
+    musicPrompt: "You seem balanced right now. Let me find some pleasant music to accompany your mood.",
+    synonyms: ["balanced", "indifferent", "unaffected", "composed", "steady"],
+    intensity: {
+      low: ["soft background", "gentle ambient", "light"],
+      medium: ["chill", "lo-fi", "easy listening"],
+      high: ["deep chill", "atmospheric", "immersive"],
+    },
   },
 }
 
-const complexScenarios = {
+// Music genre keywords for direct requests
+const musicGenreKeywords = {
+  rock: ["rock", "metal", "punk", "hardcore", "alternative rock"],
+  pop: ["pop", "mainstream", "chart", "radio hits"],
+  jazz: ["jazz", "blues", "swing", "bebop"],
+  classical: ["classical", "orchestra", "symphony", "piano"],
+  electronic: ["electronic", "edm", "techno", "house", "dubstep"],
+  hiphop: ["hip hop", "rap", "trap", "r&b"],
+  country: ["country", "folk", "bluegrass", "americana"],
+  indie: ["indie", "independent", "alternative", "underground"],
+  reggae: ["reggae", "ska", "dub"],
+  latin: ["latin", "salsa", "bachata", "reggaeton"],
+  ambient: ["ambient", "atmospheric", "soundscape", "drone"],
+  workout: ["workout", "gym", "fitness", "exercise", "training"],
+  study: ["study", "focus", "concentration", "lo-fi"],
+  sleep: ["sleep", "bedtime", "lullaby", "peaceful night"],
+  party: ["party", "dance", "club", "celebration"],
+  chill: ["chill", "relaxing", "calm", "mellow"],
+}
+
+// Enhanced context scenarios
+const contextualScenarios = {
   breakup: {
-    keywords: ["breakup", "broke up", "ex", "dumped", "heartbreak", "relationship ended"],
-    response:
-      "I understand you're going through a breakup. That can be really tough. Would you like to hear some songs that might help process those emotions?",
-    genres: ["breakup songs", "healing", "emotional", "heartbreak recovery", "moving on"],
+    keywords: ["breakup", "broke up", "ex", "dumped", "heartbreak", "relationship ended", "split up"],
+    emotion: "Sad",
+    intensity: "high",
+    response: "Going through a breakup is never easy. Music can help you process these emotions and heal.",
+    genres: ["breakup songs", "healing", "emotional recovery", "moving on", "heartbreak ballads"],
   },
-  stressed: {
-    keywords: ["stress", "stressed", "anxiety", "anxious", "overwhelmed", "pressure"],
-    response:
-      "It sounds like you're under a lot of stress right now. Music can be a great stress reliever. Would you like some calming tracks?",
-    genres: ["relaxing", "meditation", "calming", "stress relief", "peaceful"],
+  work_stress: {
+    keywords: ["work", "job", "boss", "deadline", "meeting", "project", "office", "stressed at work"],
+    emotion: "Anxious",
+    intensity: "medium",
+    response: "Work stress can be overwhelming. Let me find some music to help you decompress.",
+    genres: ["stress relief", "calming", "focus music", "relaxing"],
   },
   celebration: {
-    keywords: ["celebration", "celebrate", "party", "achievement", "success", "graduated", "promotion"],
-    response: "Congratulations on your achievement! Would you like some celebratory music to mark the occasion?",
-    genres: ["celebration", "party", "upbeat", "victory", "success"],
+    keywords: ["celebration", "celebrate", "party", "achievement", "success", "graduated", "promotion", "birthday"],
+    emotion: "Happy",
+    intensity: "high",
+    response: "Congratulations! This calls for some celebratory music!",
+    genres: ["celebration", "party", "victory", "achievement", "upbeat"],
   },
   workout: {
-    keywords: ["workout", "exercise", "gym", "running", "training"],
-    response: "Getting active? Music can boost your workout performance. Would you like some energizing tracks?",
-    genres: ["workout", "energy boost", "motivation", "fitness", "pump up"],
+    keywords: ["workout", "exercise", "gym", "running", "training", "fitness"],
+    emotion: "Motivated",
+    intensity: "high",
+    response: "Time to get pumped! Let me find some high-energy workout music.",
+    genres: ["workout", "fitness", "pump-up", "high energy", "motivation"],
   },
-  sleep: {
-    keywords: ["sleep", "tired", "insomnia", "bedtime", "rest"],
-    response:
-      "Having trouble sleeping? Music can help you relax and fall asleep. Would you like some soothing sleep music?",
-    genres: ["sleep", "relaxing sleep", "calm sleep", "white noise", "sleep meditation"],
+  late_night: {
+    keywords: ["late night", "midnight", "can't sleep", "insomnia", "night time"],
+    emotion: "Peaceful",
+    intensity: "low",
+    response: "Late night vibes call for something special. Let me find some perfect nighttime music.",
+    genres: ["late night", "midnight", "chill night", "peaceful night"],
+  },
+  morning: {
+    keywords: ["morning", "wake up", "start day", "coffee", "sunrise"],
+    emotion: "Motivated",
+    intensity: "medium",
+    response: "Starting your day right! Let me find some energizing morning music.",
+    genres: ["morning", "wake up", "energizing", "start day", "positive morning"],
   },
 }
 
-const MoodMusicChatbot = ({ emotion }) => {
+const MoodConfirmationChatbot = ({ emotion: initialEmotion }) => {
   const [messages, setMessages] = useState([])
   const [initialized, setInitialized] = useState(false)
-
-  // Add this useEffect to handle the welcome message only once
-  useEffect(() => {
-    if (!initialized) {
-      setMessages([
-        {
-          sender: "bot",
-          text: "Hi! I'm your mood music assistant NEURA.",
-        },
-      ])
-      setInitialized(true)
-    }
-  }, [initialized])
-
   const [input, setInput] = useState("")
   const [searchResults, setSearchResults] = useState([])
   const [currentEmotion, setCurrentEmotion] = useState(null)
+  const [emotionIntensity, setEmotionIntensity] = useState("medium")
   const [showPlayer, setShowPlayer] = useState(false)
   const [currentSong, setCurrentSong] = useState(null)
-  const [moodConfirmed, setMoodConfirmed] = useState(false)
-  const [detectedEmotion, setDetectedEmotion] = useState(null)
-  const [processingMessage, setProcessingMessage] = useState(false) // Flag to prevent double responses
-  const chatContainerRef = useRef(null)
-  const audioRef = useRef(null)
-  const [audioData, setAudioData] = useState(Array(15).fill(10))
   const [isLoading, setIsLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [lastQuery, setLastQuery] = useState("") // Track last search query to prevent duplicates
+  const [audioData, setAudioData] = useState(Array(15).fill(10))
+  const [moodConfirmed, setMoodConfirmed] = useState(false)
+  const [conversationStage, setConversationStage] = useState("initial") // initial, confirming, confirmed
+  const chatContainerRef = useRef(null)
+  const audioRef = useRef(null)
+
+  // Initialize with welcome message and initial mood detection
+  useEffect(() => {
+    if (!initialized) {
+      const welcomeMessages = [
+        {
+          sender: "bot",
+          text: "Hi! I'm NEURA, your AI music companion. I can sense emotions and suggest perfect music for any mood.",
+          id: Date.now(),
+        },
+      ]
+
+      if (initialEmotion && emotionConfig[initialEmotion]) {
+        welcomeMessages.push({
+          sender: "bot",
+          text: `I'm picking up that you might be feeling ${initialEmotion.toLowerCase()} right now. Tell me a bit about what's going on with you - I'd love to understand your mood better and find the perfect music to match.`,
+          id: Date.now() + 1,
+        })
+        setConversationStage("confirming")
+      } else {
+        welcomeMessages.push({
+          sender: "bot",
+          text: "Just tell me what's on your mind or how you're feeling, and I'll find the perfect music to match your mood.",
+          id: Date.now() + 1,
+        })
+      }
+
+      setMessages(welcomeMessages)
+      setInitialized(true)
+    }
+  }, [initialized, initialEmotion])
 
   // Scroll to bottom of chat when messages change
   useEffect(() => {
@@ -122,7 +234,7 @@ const MoodMusicChatbot = ({ emotion }) => {
     }
   }, [messages])
 
-  // Simulate audio visualization data
+  // Audio visualization effect
   useEffect(() => {
     let interval
     if (showPlayer && currentSong && isPlaying) {
@@ -130,20 +242,132 @@ const MoodMusicChatbot = ({ emotion }) => {
         setAudioData((prev) => prev.map(() => Math.floor(Math.random() * 50) + 10))
       }, 100)
     }
-
     return () => clearInterval(interval)
   }, [showPlayer, currentSong, isPlaying])
 
-  const addMessage = useCallback(
-    (sender, text) => {
-      // Check if this exact message already exists in the last 3 messages to prevent duplicates
-      const recentMessages = messages.slice(-3)
-      if (!recentMessages.some((msg) => msg.sender === sender && msg.text === text)) {
-        setMessages((prev) => [...prev, { sender, text }])
+  const addMessage = useCallback((sender, text) => {
+    setMessages((prev) => [...prev, { sender, text, id: Date.now() + Math.random() }])
+  }, [])
+
+  // Enhanced mood analysis using Gemini with conversation context
+  const analyzeMoodWithGemini = useCallback(async (userMessage, stage = "initial", suggestedEmotion = null) => {
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+
+      let prompt = ""
+
+      if (stage === "confirming" && suggestedEmotion) {
+        prompt = `
+          You are an expert emotion analyst. I initially detected the user might be feeling "${suggestedEmotion}".
+          Now analyze their response: "${userMessage}"
+          
+          Determine:
+          1. Do they confirm, deny, or provide more context about the suggested emotion?
+          2. What is their actual emotional state based on their words, tone, and context?
+          3. How intense is this emotion?
+          4. What empathetic response would be appropriate?
+          
+          Available emotions: Happy, Sad, Angry, Anxious, Excited, Romantic, Nostalgic, Motivated, Peaceful, Neutral
+          
+          Respond in this exact JSON format:
+          {
+            "confirms_suggestion": true/false,
+            "actual_emotion": "detected_emotion",
+            "intensity": "low/medium/high",
+            "confidence": 0.0-1.0,
+            "reasoning": "brief explanation of emotional analysis",
+            "context": "situational context if any",
+            "empathetic_response": "warm, understanding response (max 60 words)",
+            "music_suggestion_reason": "why this music would help (max 40 words)",
+            "ready_for_music": true/false
+          }
+        `
+      } else {
+        prompt = `
+          You are an expert emotion and mood analyst. Analyze this user message for emotional tone, context, and intensity:
+          
+          Message: "${userMessage}"
+          
+          Consider:
+          1. Explicit emotional words and phrases
+          2. Implicit emotional tone and context
+          3. Intensity level (low, medium, high)
+          4. Situational context that might affect mood
+          5. Subtle linguistic cues like punctuation, capitalization, word choice
+          6. Whether they're requesting specific music genres
+          
+          Available emotions: Happy, Sad, Angry, Anxious, Excited, Romantic, Nostalgic, Motivated, Peaceful, Neutral
+          
+          Respond in this exact JSON format:
+          {
+            "emotion": "detected_emotion",
+            "intensity": "low/medium/high",
+            "confidence": 0.0-1.0,
+            "reasoning": "brief explanation of why you detected this emotion",
+            "context": "any situational context detected",
+            "empathetic_response": "a warm, understanding response (max 60 words)",
+            "music_suggestion_reason": "why this type of music would help (max 40 words)",
+            "genre_request": "specific genre if mentioned, otherwise null",
+            "ready_for_music": true/false
+          }
+        `
       }
-    },
-    [messages],
-  )
+
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      const responseText = response.text()
+
+      // Extract JSON from response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+
+      throw new Error("Could not parse AI response")
+    } catch (error) {
+      console.error("Error analyzing mood with Gemini:", error)
+      return {
+        emotion: "Neutral",
+        intensity: "medium",
+        confidence: 0.5,
+        reasoning: "Unable to analyze mood accurately",
+        context: "",
+        empathetic_response: "I'd love to help you find some music. Could you tell me more about how you're feeling?",
+        music_suggestion_reason: "Music can always brighten your day",
+        ready_for_music: false,
+      }
+    }
+  }, [])
+
+  // Check for direct genre requests
+  const checkForGenreRequest = useCallback((userMessage) => {
+    const lowerMessage = userMessage.toLowerCase()
+
+    for (const [genre, keywords] of Object.entries(musicGenreKeywords)) {
+      if (keywords.some((keyword) => lowerMessage.includes(keyword))) {
+        return genre
+      }
+    }
+
+    // Check for play/music keywords
+    const playKeywords = ["play", "put on", "listen to", "music", "songs", "tracks"]
+    if (playKeywords.some((keyword) => lowerMessage.includes(keyword))) {
+      // Extract potential genre after play keywords
+      const words = lowerMessage.split(" ")
+      for (let i = 0; i < words.length; i++) {
+        if (playKeywords.includes(words[i]) && i + 1 < words.length) {
+          const nextWord = words[i + 1]
+          for (const [genre, keywords] of Object.entries(musicGenreKeywords)) {
+            if (keywords.includes(nextWord)) {
+              return genre
+            }
+          }
+        }
+      }
+    }
+
+    return null
+  }, [])
 
   const processSongData = useCallback((song) => {
     return {
@@ -157,95 +381,75 @@ const MoodMusicChatbot = ({ emotion }) => {
   }, [])
 
   const searchMusic = useCallback(
-    async (query) => {
-      // Don't search if we're already searching for this query
-      if (query === lastQuery && searchResults.length > 0) {
-        return
-      }
-
-      setLastQuery(query)
+    async (query, emotion = "Neutral", intensity = "medium") => {
       setIsLoading(true)
-      addMessage("bot", `Searching for ${query} music...`)
-
-      // Clear previous results when searching for new genre
-      setSearchResults([])
+      addMessage("bot", `Finding the perfect ${query} music for you...`)
 
       try {
-        // Cache results to localStorage to reduce API calls
-        const cacheKey = `music_search_${query}`
-        const cachedResults = localStorage.getItem(cacheKey)
-
-        if (cachedResults) {
-          const data = JSON.parse(cachedResults)
-          const processedSongs = data.results.map(processSongData).filter((song) => song.mp3_url)
-          setSearchResults(processedSongs)
-
-          if (processedSongs.length > 0) {
-            addMessage("bot", `Here are some ${query} recommendations for you:`)
-          } else {
-            addMessage("bot", `I couldn't find any ${query} music in my cache. Trying fresh search...`)
-            throw new Error("No cached results")
-          }
-          return
-        }
-
-        const response = await fetch(`https://saavn.dev/api/search/songs?query=${query}`)
+        const response = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}`)
         const data = await response.json()
 
         if (data.data?.results) {
-          // Cache the results
-          localStorage.setItem(cacheKey, JSON.stringify(data.data))
-
-          const processedSongs = data.data.results.map(processSongData).filter((song) => song.mp3_url)
+          const processedSongs = data.data.results
+            .map(processSongData)
+            .filter((song) => song.mp3_url && song.mp3_url !== "#")
+            .slice(0, 8)
 
           setSearchResults(processedSongs)
 
           if (processedSongs.length > 0) {
-            addMessage("bot", `I found some ${query} music you might enjoy:`)
+            addMessage("bot", `Perfect! I found some great ${query} tracks that should match your vibe perfectly.`)
           } else {
-            addMessage("bot", `I couldn't find any ${query} music at the moment. Try a different genre?`)
+            addMessage("bot", "I'm having trouble finding that specific music. Let me try something similar...")
+            // Fallback search
+            const fallbackQuery = emotion === "Neutral" ? "popular music" : emotionConfig[emotion]?.genres[0]
+            const fallbackResponse = await fetch(
+              `https://saavn.dev/api/search/songs?query=${encodeURIComponent(fallbackQuery)}`,
+            )
+            const fallbackData = await fallbackResponse.json()
+
+            if (fallbackData.data?.results) {
+              const fallbackSongs = fallbackData.data.results
+                .map(processSongData)
+                .filter((song) => song.mp3_url && song.mp3_url !== "#")
+                .slice(0, 6)
+
+              setSearchResults(fallbackSongs)
+              addMessage("bot", `Here are some ${fallbackQuery} tracks that might work for you.`)
+            }
           }
-        } else {
-          addMessage("bot", "I had trouble finding music. Would you like to try again?")
         }
       } catch (error) {
         console.error("Error searching songs:", error)
-        addMessage("bot", "I had trouble finding music. Would you like to try again?")
+        addMessage("bot", "I encountered an issue while searching for music. Could you try a different request?")
       } finally {
         setIsLoading(false)
       }
     },
-    [addMessage, processSongData, lastQuery, searchResults.length],
+    [addMessage, processSongData],
   )
 
-  // Define playSong function first
   const playSong = useCallback(
     (song) => {
       setCurrentSong(song)
       setShowPlayer(true)
 
-      // Small delay to ensure the audio element is properly updated
       setTimeout(() => {
         if (audioRef.current) {
           audioRef.current.src = song.mp3_url
-
-          // Try to play and handle autoplay restrictions
           const playPromise = audioRef.current.play()
 
           if (playPromise !== undefined) {
             playPromise
               .then(() => {
                 setIsPlaying(true)
-                console.log("Audio playing successfully")
               })
               .catch((err) => {
                 console.error("Error playing audio:", err)
-                // If autoplay is prevented, we'll show a message to the user
                 if (err.name === "NotAllowedError") {
-                  addMessage("bot", "Browser prevented autoplay. Please use the play button to start the music.")
-                  setIsPlaying(false)
+                  addMessage("bot", "Please click the play button to start the music (browser autoplay restriction).")
                 } else {
-                  addMessage("bot", "I couldn't play that song. Let me try another one.")
+                  addMessage("bot", "Couldn't play that song. Let me try another one.")
                   playNextSong()
                 }
               })
@@ -256,7 +460,6 @@ const MoodMusicChatbot = ({ emotion }) => {
     [addMessage],
   )
 
-  // Define playNextSong function
   const playNextSong = useCallback(() => {
     if (searchResults.length > 0) {
       const currentIndex = searchResults.findIndex((song) => song.id === currentSong?.id)
@@ -264,71 +467,6 @@ const MoodMusicChatbot = ({ emotion }) => {
       playSong(searchResults[nextIndex])
     }
   }, [searchResults, currentSong, playSong])
-
-  // Handle emotion detection from camera
-  useEffect(() => {
-    if (emotion && emotion !== detectedEmotion && !processingMessage) {
-      setDetectedEmotion(emotion)
-      setMoodConfirmed(false)
-
-      if (!messages.some((msg) => msg.text === emotionConfig[emotion]?.initialPrompt)) {
-        handleInitialEmotionDetection(emotion)
-      }
-    }
-  }, [emotion, detectedEmotion, messages, processingMessage])
-
-  const handleInitialEmotionDetection = useCallback(
-    (emotion) => {
-      const normalizedEmotion = emotionConfig[emotion] ? emotion : "Neutral"
-      addMessage("bot", emotionConfig[normalizedEmotion].initialPrompt)
-    },
-    [addMessage],
-  )
-
-  const handleMoodConfirmation = useCallback(
-    async (confirmed, emotion) => {
-      const normalizedEmotion = emotionConfig[emotion] ? emotion : "Neutral"
-
-      setCurrentEmotion(normalizedEmotion)
-      setMoodConfirmed(true)
-
-      if (confirmed) {
-        addMessage("bot", emotionConfig[normalizedEmotion].musicPrompt)
-
-        try {
-          setProcessingMessage(true)
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
-          const prompt = `The user is feeling ${normalizedEmotion.toLowerCase()}. Provide a short, empathetic response (under 50 words) about how music can help with this mood. Be conversational and friendly.`
-          const result = await model.generateContent(prompt)
-          const response = await result.response
-          const responseText = response.text()
-
-          addMessage("bot", responseText)
-
-          // Search for music based on the emotion
-          const genre =
-            emotionConfig[normalizedEmotion].genres[
-              Math.floor(Math.random() * emotionConfig[normalizedEmotion].genres.length)
-            ]
-          await searchMusic(genre)
-        } catch (error) {
-          console.error("Error generating AI response:", error)
-          const fallbackResponses = [
-            `Music can be a great companion when you're feeling ${normalizedEmotion.toLowerCase()}. Let me find some tracks for you.`,
-            `I understand that ${normalizedEmotion.toLowerCase()} mood. The right music can really help.`,
-            `When I feel ${normalizedEmotion.toLowerCase()}, music always helps me. Let me share some with you.`,
-          ]
-          addMessage("bot", fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)])
-        } finally {
-          setProcessingMessage(false)
-        }
-      } else {
-        addMessage("bot", "I see! Could you tell me how you're actually feeling right now?")
-        setProcessingMessage(false)
-      }
-    },
-    [addMessage, searchMusic],
-  )
 
   const playPreviousSong = useCallback(() => {
     if (searchResults.length > 0) {
@@ -355,200 +493,120 @@ const MoodMusicChatbot = ({ emotion }) => {
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault()
-
-      if (!input.trim() || isLoading || processingMessage) return
+      if (!input.trim() || isLoading) return
 
       const userMessage = input.trim()
       addMessage("user", userMessage)
       setInput("")
-
-      // Set processing flag to prevent double responses
-      setProcessingMessage(true)
-
-      // Check if user is asking for a specific genre of music
-      const musicGenreKeywords = [
-        "play",
-        "music",
-        "songs",
-        "tracks",
-        "playlist",
-        "rock",
-        "pop",
-        "jazz",
-        "classical",
-        "hip hop",
-        "rap",
-        "country",
-        "electronic",
-        "dance",
-        "indie",
-        "folk",
-        "metal",
-        "blues",
-        "r&b",
-        "reggae",
-        "soul",
-        "funk",
-        "disco",
-        "techno",
-        "house",
-        "ambient",
-        "lofi",
-        "lo-fi",
-        "chill",
-        "study",
-        "focus",
-        "sleep",
-        "relax",
-      ]
-
-      const containsMusicGenre = musicGenreKeywords.some((keyword) => userMessage.toLowerCase().includes(keyword))
-
-      if (containsMusicGenre) {
-        // Extract potential genre from message
-        const genreWords = userMessage
-          .toLowerCase()
-          .split(" ")
-          .filter(
-            (word) =>
-              musicGenreKeywords.includes(word) && !["play", "music", "songs", "tracks", "playlist"].includes(word),
-          )
-
-        if (genreWords.length > 0) {
-          await searchMusic(genreWords.join(" "))
-          setProcessingMessage(false)
-          return
-        }
-      }
-
-      // Handle mood confirmation responses
-      if (detectedEmotion && !moodConfirmed) {
-        const positiveResponses = [
-          "yes",
-          "yeah",
-          "yep",
-          "correct",
-          "right",
-          "true",
-          "okay",
-          "ok",
-          "yup",
-          "sure",
-          "indeed",
-          "exactly",
-        ]
-        const negativeResponses = ["no", "nope", "not", "incorrect", "wrong", "false", "nah"]
-
-        const isPositive = positiveResponses.some((word) => userMessage.toLowerCase().includes(word))
-        const isNegative = negativeResponses.some((word) => userMessage.toLowerCase().includes(word))
-
-        if (isPositive) {
-          await handleMoodConfirmation(true, detectedEmotion)
-          return
-        } else if (isNegative) {
-          await handleMoodConfirmation(false, detectedEmotion)
-          return
-        } else {
-          addMessage("bot", `I'm not sure if that's a yes or no. Are you feeling ${detectedEmotion.toLowerCase()}?`)
-          setProcessingMessage(false)
-          return
-        }
-      }
-
-      // Check for complex scenarios first
-      for (const [scenario, data] of Object.entries(complexScenarios)) {
-        if (data.keywords.some((keyword) => userMessage.toLowerCase().includes(keyword))) {
-          addMessage("bot", data.response)
-
-          try {
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
-            const prompt = `The user mentioned they're dealing with ${scenario}. Provide a short, empathetic response (under 50 words) about how music can help. Be conversational and friendly.`
-            const result = await model.generateContent(prompt)
-            const response = await result.response
-            const responseText = response.text()
-
-            addMessage("bot", responseText)
-          } catch (error) {
-            console.error("Error generating AI response:", error)
-            addMessage("bot", "Music can be really helpful in times like these. Let me find some tracks for you.")
-          }
-
-          await searchMusic(data.genres[Math.floor(Math.random() * data.genres.length)])
-          setProcessingMessage(false)
-          return
-        }
-      }
-
-      // Check for simple emotion keywords
-      for (const [emotion, config] of Object.entries(emotionConfig)) {
-        if (config.synonyms.some((synonym) => userMessage.toLowerCase().includes(synonym.toLowerCase()))) {
-          setDetectedEmotion(emotion)
-          addMessage(
-            "bot",
-            `It sounds like you might be feeling ${emotion.toLowerCase()}. Would you like some music that matches this mood?`,
-          )
-          setProcessingMessage(false)
-          return
-        }
-      }
-
-      // Use Gemini for more complex analysis
       setIsLoading(true)
 
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+        // Check for direct genre requests first
+        const requestedGenre = checkForGenreRequest(userMessage)
+        if (requestedGenre) {
+          addMessage("bot", `Great choice! Let me find some ${requestedGenre} music for you.`)
+          await searchMusic(requestedGenre)
+          setIsLoading(false)
+          return
+        }
 
-        const prompt = `
-        Analyze this user message about their mood: "${userMessage}"
-        
-        Respond in this exact format:
-        Emotion: [Happy/Sad/Angry/Disgust/Fear/Surprise/Neutral]
-        Response: [short empathetic response under 50 words]
-        WantsMusic: [yes/no]
-        MusicGenre: [specific genre if mentioned, otherwise "none"]
-      `
+        // Check for contextual scenarios
+        let contextFound = false
+        for (const [scenario, data] of Object.entries(contextualScenarios)) {
+          if (data.keywords.some((keyword) => userMessage.toLowerCase().includes(keyword))) {
+            setCurrentEmotion(data.emotion)
+            setEmotionIntensity(data.intensity)
+            setMoodConfirmed(true)
+            setConversationStage("confirmed")
+            addMessage("bot", data.response)
 
-        const result = await model.generateContent(prompt)
-        const response = await result.response
-        const responseText = response.text()
+            const genre = data.genres[Math.floor(Math.random() * data.genres.length)]
+            await searchMusic(genre, data.emotion, data.intensity)
+            contextFound = true
+            break
+          }
+        }
 
-        const emotionMatch = responseText.match(/Emotion: (.*)/)
-        const replyMatch = responseText.match(/Response: (.*)/)
-        const wantsMusicMatch = responseText.match(/WantsMusic: (.*)/)
-        const genreMatch = responseText.match(/MusicGenre: (.*)/)
+        if (!contextFound) {
+          if (conversationStage === "confirming" && initialEmotion) {
+            // We're in confirmation stage with initial emotion
+            const analysis = await analyzeMoodWithGemini(userMessage, "confirming", initialEmotion)
 
-        const newEmotion = emotionMatch?.[1]?.trim() || "Neutral"
-        const empathicResponse = replyMatch?.[1]?.trim() || "Would you like some music that matches your mood?"
-        const wantsMusic = wantsMusicMatch?.[1]?.trim().toLowerCase() === "yes"
-        const specificGenre = genreMatch?.[1]?.trim().toLowerCase()
+            setCurrentEmotion(analysis.actual_emotion)
+            setEmotionIntensity(analysis.intensity)
+            addMessage("bot", analysis.empathetic_response)
 
-        setDetectedEmotion(newEmotion)
-        addMessage("bot", empathicResponse)
+            if (analysis.ready_for_music) {
+              setMoodConfirmed(true)
+              setConversationStage("confirmed")
 
-        if (wantsMusic) {
-          if (specificGenre && specificGenre !== "none") {
-            await searchMusic(specificGenre)
+              if (analysis.music_suggestion_reason) {
+                addMessage("bot", analysis.music_suggestion_reason)
+              }
+
+              // Select appropriate genre
+              const emotionData = emotionConfig[analysis.actual_emotion] || emotionConfig.Neutral
+              const intensityGenres = emotionData.intensity?.[analysis.intensity] || emotionData.genres
+              const selectedGenre = intensityGenres[Math.floor(Math.random() * intensityGenres.length)]
+
+              await searchMusic(selectedGenre, analysis.actual_emotion, analysis.intensity)
+            } else {
+              // Need more conversation to understand mood
+              addMessage(
+                "bot",
+                "Tell me more about what's happening - I want to find music that really fits your situation.",
+              )
+            }
           } else {
-            await searchMusic(emotionConfig[newEmotion]?.genres?.[0] || "pop")
+            // Regular mood analysis
+            const analysis = await analyzeMoodWithGemini(userMessage)
+
+            setCurrentEmotion(analysis.emotion)
+            setEmotionIntensity(analysis.intensity)
+            addMessage("bot", analysis.empathetic_response)
+
+            if (analysis.ready_for_music) {
+              setMoodConfirmed(true)
+              setConversationStage("confirmed")
+
+              if (analysis.music_suggestion_reason) {
+                addMessage("bot", analysis.music_suggestion_reason)
+              }
+
+              if (analysis.genre_request) {
+                await searchMusic(analysis.genre_request, analysis.emotion, analysis.intensity)
+              } else {
+                const emotionData = emotionConfig[analysis.emotion] || emotionConfig.Neutral
+                const intensityGenres = emotionData.intensity?.[analysis.intensity] || emotionData.genres
+                const selectedGenre = intensityGenres[Math.floor(Math.random() * intensityGenres.length)]
+
+                await searchMusic(selectedGenre, analysis.emotion, analysis.intensity)
+              }
+            } else {
+              setConversationStage("confirming")
+              addMessage("bot", "I'd love to understand your mood better. What's been on your mind lately?")
+            }
           }
         }
       } catch (error) {
-        console.error("Error analyzing message with AI:", error)
-        addMessage("bot", "I'd love to help you find some music. Could you tell me more about how you're feeling?")
+        console.error("Error processing message:", error)
+        addMessage(
+          "bot",
+          "I want to help you find the perfect music. Could you tell me more about how you're feeling or what kind of music you're in the mood for?",
+        )
       } finally {
         setIsLoading(false)
-        setProcessingMessage(false)
       }
     },
     [
       input,
       isLoading,
-      detectedEmotion,
-      moodConfirmed,
       addMessage,
-      handleMoodConfirmation,
+      checkForGenreRequest,
       searchMusic,
-      processingMessage,
+      conversationStage,
+      initialEmotion,
+      analyzeMoodWithGemini,
     ],
   )
 
@@ -587,7 +645,7 @@ const MoodMusicChatbot = ({ emotion }) => {
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
                   NEURA
                 </h1>
-                <p className="text-xs text-gray-300">Emotion-Driven Music AI</p>
+                <p className="text-xs text-gray-300">AI Mood & Music Intelligence</p>
               </div>
             </motion.div>
 
@@ -597,10 +655,10 @@ const MoodMusicChatbot = ({ emotion }) => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="bg-gradient-to-r from-purple-900 to-indigo-900 px-3 py-1 rounded-full text-sm"
               >
-                Mood:{" "}
                 <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">
-                  {currentEmotion}
+                  {currentEmotion} ({emotionIntensity})
                 </span>
+                {moodConfirmed && <span className="ml-2 text-green-400 text-xs">✓ Confirmed</span>}
               </motion.div>
             )}
           </div>
@@ -611,9 +669,9 @@ const MoodMusicChatbot = ({ emotion }) => {
           {/* Chat container */}
           <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
             <AnimatePresence>
-              {messages.map((message, index) => (
+              {messages.map((message) => (
                 <motion.div
-                  key={`${index}-${message.text.substring(0, 10)}`}
+                  key={message.id}
                   className={`mb-4 flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -669,7 +727,7 @@ const MoodMusicChatbot = ({ emotion }) => {
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               >
                 <h3 className="font-medium text-lg mb-3 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">
-                  Music Recommendations
+                  Curated for Your Mood
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {searchResults.slice(0, 6).map((song, index) => (
@@ -868,7 +926,7 @@ const MoodMusicChatbot = ({ emotion }) => {
                   </div>
                 </div>
 
-                {/* Audio visualization */}
+                {/* Audio visualization and controls */}
                 <div className="mt-3">
                   <div className="flex items-center justify-between">
                     <div className="text-xs text-gray-400">
@@ -962,7 +1020,7 @@ const MoodMusicChatbot = ({ emotion }) => {
                   onPause={() => setIsPlaying(false)}
                   onEnded={playNextSong}
                   onError={() => {
-                    addMessage("bot", "I couldn't play that song. Trying another one...")
+                    addMessage("bot", "Couldn't play that song. Trying another one...")
                     playNextSong()
                   }}
                   onTimeUpdate={() => {
@@ -985,17 +1043,21 @@ const MoodMusicChatbot = ({ emotion }) => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-800 bg-opacity-70 rounded-xl pr-14 border border-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-30 focus:outline-none transition-all duration-300 text-gray-200 placeholder-gray-400"
-                placeholder="Type how you're feeling..."
-                disabled={isLoading || processingMessage}
+                placeholder={
+                  conversationStage === "confirming"
+                    ? "Tell me more about how you're feeling..."
+                    : "Share what's on your mind or request a music genre..."
+                }
+                disabled={isLoading}
               />
 
               <div className="absolute right-0 mr-2 flex space-x-1">
                 <motion.button
                   type="submit"
-                  className={`p-2 text-purple-400 hover:text-purple-300 transition-colors duration-300 ${isLoading || processingMessage || input.trim() === "" ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`p-2 text-purple-400 hover:text-purple-300 transition-colors duration-300 ${isLoading || input.trim() === "" ? "opacity-50 cursor-not-allowed" : ""}`}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
-                  disabled={isLoading || processingMessage || input.trim() === ""}
+                  disabled={isLoading || input.trim() === ""}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1016,7 +1078,11 @@ const MoodMusicChatbot = ({ emotion }) => {
             </div>
 
             <div className="flex justify-between mt-2 text-xs text-gray-400">
-              <span>Tell me how you're feeling or what music you'd like</span>
+              <span>
+                {conversationStage === "confirming"
+                  ? "I'm understanding your mood - keep sharing!"
+                  : "Express yourself naturally or request specific genres (e.g., 'play some jazz')"}
+              </span>
               {input.length > 0 && <span>{input.length} characters</span>}
             </div>
           </form>
@@ -1026,4 +1092,4 @@ const MoodMusicChatbot = ({ emotion }) => {
   )
 }
 
-export default MoodMusicChatbot
+export default MoodConfirmationChatbot
